@@ -1,0 +1,33 @@
+name: Build
+on:
+  # push: 
+  pull_request: 
+  workflow_dispatch: 
+jobs:
+  build:
+    strategy: 
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: '${{ matrix.os }}'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+          check-latest: true
+      - name: Build (Not Windows)
+        if: matrix.os != 'windows-latest'
+        run: 'go build -v -o api-fallback_compiled_${{ matrix.os }}'
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
+        run: 'go build -v -o api-fallback_compiled_${{ matrix.os }}.exe'
+      - uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          # path: 'api-fallback_compiled_${{ matrix.os }}'
+          path: 'api-fallback_compiled_*'
+          retention-days: 2
