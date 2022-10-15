@@ -60,12 +60,20 @@ func main() {
 
 	// Creating a cloudflare.DNSRecord object can allow for filtering
 	// Example: foo := cloudflare.DNSRecord{Name: "foo.example.com"}
-	records, err := cloudflareApi.DNSRecords(ctx, zoneId, cloudflare.DNSRecord{})
+	recordName := os.Getenv("RECORD_NAME")
+	if recordName == "" {
+		fmt.Print("Record Name (example: foo.example.com): ")
+		recordName = singleLineInput()
+	} else {
+		logger.Info().Msg("Using record name from enviroment variable")
+	}
+	recordNameFilter := cloudflare.DNSRecord{Name: recordName}
+	records, err := cloudflareApi.DNSRecords(ctx, zoneId, recordNameFilter)
 	checkNilErr(err)
 
-	// Iterate over records and output their name and type
+	// Iterate over records and output their name, type, and value
 	for _, record := range records {
-		logger.Info().Msgf("Record Name: %v; Record Type: %v", record.Name, record.Type)
+		logger.Info().Msgf("Record Name: %v; Record Type: %v; Record Value: %v", record.Name, record.Type, record.Content)
 	}
 }
 
