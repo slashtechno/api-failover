@@ -67,7 +67,7 @@ func main() {
 	} else {
 		logger.Info().Msg("Using record name from enviroment variable")
 	}
-	recordNameFilter := cloudflare.DNSRecord{Name: recordName}
+	recordNameFilter := cloudflare.DNSRecord{Name: recordName, Type: "A"}
 	records, err := cloudflareApi.DNSRecords(ctx, zoneId, recordNameFilter)
 	checkNilErr(err)
 
