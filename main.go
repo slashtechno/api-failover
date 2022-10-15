@@ -28,7 +28,7 @@ func main() {
 	// logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
 	// CLI Logger
 	// .caller can display the line number
-	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).Level(zerolog.DebugLevel).With().Timestamp().Logger()
+	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).Level(zerolog.DebugLevel).With().Timestamp().Caller().Logger()
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
@@ -38,7 +38,13 @@ func main() {
 	ctx := context.Background()
 	userDetails, err := cloudflareApi.UserDetails(ctx)
 	checkNilErr(err)
-	logger.Info().Msgf("User Email: %v\n", userDetails.Email)
+	logger.Info().Msgf("User Email: %v; ", userDetails.Email)
+	zones, err := cloudflareApi.ListZones(ctx)
+	checkNilErr(err)
+	// Iterate over zones
+	for index, zone := range zones {
+		logger.Info().Msgf("Zone name: %v; Zone ID: %v; Index: %v", zone.Name, zone.ID, index)
+	}
 }
 
 func checkNilErr(err error) {
