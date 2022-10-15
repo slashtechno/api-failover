@@ -1,6 +1,6 @@
 name: Build
 on:
-  # push: 
+  push: 
   pull_request: 
   workflow_dispatch: 
 jobs:
@@ -30,4 +30,5 @@ jobs:
           name: binaries
           # path: 'api-fallback_compiled_${{ matrix.os }}'
           path: 'api-fallback_compiled_*'
-          retention-days: 2
+          # retention-days: 2
+          retention-days: 90
