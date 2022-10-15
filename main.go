@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -36,14 +39,33 @@ func main() {
 	cloudflareApi, err := cloudflare.NewWithAPIToken(os.Getenv("CLOUDFLARE_API_TOKEN"))
 	checkNilErr(err)
 	ctx := context.Background()
+
 	userDetails, err := cloudflareApi.UserDetails(ctx)
 	checkNilErr(err)
 	logger.Info().Msgf("User Email: %v; ", userDetails.Email)
 	zones, err := cloudflareApi.ListZones(ctx)
+
 	checkNilErr(err)
 	// Iterate over zones
 	for index, zone := range zones {
 		logger.Info().Msgf("Zone name: %v; Zone ID: %v; Index: %v", zone.Name, zone.ID, index)
+	}
+	zoneId := os.Getenv("CLOUDFLARE_ZONE_ID")
+	if zoneId == "" {
+		fmt.Print("Zone ID: ")
+		zoneId = singleLineInput()
+	} else {
+		logger.Info().Msg("Using zone ID from enviroment variable")
+	}
+
+	// Creating a cloudflare.DNSRecord object can allow for filtering
+	// Example: foo := cloudflare.DNSRecord{Name: "foo.example.com"}
+	records, err := cloudflareApi.DNSRecords(ctx, zoneId, cloudflare.DNSRecord{})
+	checkNilErr(err)
+
+	// Iterate over records and output their name and type
+	for _, record := range records {
+		logger.Info().Msgf("Record Name: %v; Record Type: %v", record.Name, record.Type)
 	}
 }
 
@@ -54,4 +76,12 @@ func checkNilErr(err error) {
 			Err(err).
 			Msg("something happened!")
 	}
+}
+func singleLineInput() string {
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
+	checkNilErr(err)
+	input = strings.TrimSpace(input)
+	// fmt.Print("\n")
+	return input
 }
