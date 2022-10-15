@@ -3,12 +3,14 @@ module github.com/slashtechno/api-fallback
 go 1.19
 
 require (
+	github.com/alexflint/go-arg v1.4.3
 	github.com/cloudflare/cloudflare-go v0.52.0
 	github.com/joho/godotenv v1.4.0
 	github.com/rs/zerolog v1.28.0
 )
 
 require (
+	github.com/alexflint/go-scalar v1.1.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
