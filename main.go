@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/alexflint/go-arg"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/joho/godotenv"
+	probing "github.com/prometheus-community/pro-bing"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -100,22 +100,50 @@ func main() {
 	backupAddresses := strings.Split(args.BackupAddresses, ",")
 
 	// Check what set of IPs are being used, primary or backup
+	// var ipSet string
 	if doAllElementsExist(ipContents, primaryAddresses) {
 		logger.Info().Msg("Using primary IP set")
+		// ipSet = "primary"
 	} else if doAllElementsExist(ipContents, backupAddresses) {
 		logger.Info().Msg("Using backup IP set")
+		// ipSet = "backup"
 	} else {
 		logger.Info().Msg("Not using a known IP set")
+		// ipSet = "unknown"
 	}
+
+	online := true
+	// Ping the IPs to see if they are up, set online to false if none are up using ping()
+	for _, ip := range primaryAddresses {
+		// for i := 1; i < 65535; i++  // TCP 0 is reserved, so start at 1
+		// Convert i to a number
+		if ping(ip) {
+			online = true
+			break
+		} else {
+			online = false
+		}
+	}
+	log.Info().Msgf("Online: %v", online)
 }
 
-func ping(host string, port string) {
-	timeout := time.Duration(1 * time.Second)
-	_, err := net.DialTimeout("tcp", host+":"+port, timeout)
+func ping(host string) bool {
+	pinger, err := probing.NewPinger("www.google.com")
 	if err != nil {
-		fmt.Printf("%s %s %s\n", host, "not responding", err.Error())
+		panic(err)
+	}
+	pinger.SetPrivileged(true)
+	pinger.Count = 3
+	err = pinger.Run() // Blocks until finished.
+	if err != nil {
+		panic(err)
+	}
+	stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
+	// Check if the server is online
+	if stats.PacketsRecv > 0 {
+		return true
 	} else {
-		fmt.Printf("%s %s %s\n", host, "responding on port:", port)
+		return false
 	}
 }
 
