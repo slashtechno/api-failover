@@ -124,7 +124,7 @@ func main() {
 			online = false
 		}
 	}
-	log.Info().Msgf("Online: %v", online)
+	logger.Info().Msgf("Online: %v", online)
 }
 
 func ping(host string) bool {
