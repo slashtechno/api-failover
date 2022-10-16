@@ -25,11 +25,11 @@ jobs:
       with:
         xgo_version: latest
         go_version: 1.19
-        dest: /home/runner/work/api-fallback/builds
-        prefix: api-fallback
+        dest: /home/runner/work/api-failover/builds
+        prefix: api-failover
         # targets: windows/amd64,linux/amd64,linux/arm64,darwin/arm64,windows/arm,windows/arm64,linux/arm,darwin/amd64
     - name: Compress releases
-      run: zip -r /home/runner/work/api-fallback/binaries.zip /home/runner/work/api-fallback/builds/*
+      run: zip -r /home/runner/work/api-failover/binaries.zip /home/runner/work/api-failover/builds/*
     - name: Delete old release
       uses: Archaholic/action-delete-release@v1
       env:
@@ -50,11 +50,11 @@ jobs:
         # generate_release_notes: true
         body: "Latest commit: ${{ github.event.head_commit.message }}"
         files: |
-          /home/runner/work/api-fallback/binaries.zip 
-          /home/runner/work/api-fallback/builds/*
+          /home/runner/work/api-failover/binaries.zip 
+          /home/runner/work/api-failover/builds/*
     - name:
       uses: actions/upload-artifact@v3
       with:
         name: binaries
-        path: /home/runner/work/api-fallback/builds/*
+        path: /home/runner/work/api-failover/builds/*
         retention-days: 2

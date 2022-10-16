@@ -21,14 +21,14 @@ jobs:
           check-latest: true
       - name: Build (Not Windows)
         if: matrix.os != 'windows-latest'
-        run: 'go build -v -o api-fallback_compiled_${{ matrix.os }}'
+        run: 'go build -v -o api-failover_compiled_${{ matrix.os }}'
       - name: Build (Windows)
         if: matrix.os == 'windows-latest'
-        run: 'go build -v -o api-fallback_compiled_${{ matrix.os }}.exe'
+        run: 'go build -v -o api-failover_compiled_${{ matrix.os }}.exe'
       - uses: actions/upload-artifact@v3
         with:
           name: binaries
-          # path: 'api-fallback_compiled_${{ matrix.os }}'
-          path: 'api-fallback_compiled_*'
+          # path: 'api-failover_compiled_${{ matrix.os }}'
+          path: 'api-failover_compiled_*'
           # retention-days: 2
           retention-days: 90

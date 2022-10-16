@@ -1,4 +1,4 @@
-module github.com/slashtechno/api-fallback
+module github.com/slashtechno/api-failover
 
 go 1.19
 
