@@ -129,15 +129,11 @@ func main() {
 
 func ping(host string) bool {
 	pinger, err := probing.NewPinger("www.google.com")
-	if err != nil {
-		panic(err)
-	}
+	checkNilErr(err)
 	pinger.SetPrivileged(true)
 	pinger.Count = 3
 	err = pinger.Run() // Blocks until finished.
-	if err != nil {
-		panic(err)
-	}
+	checkNilErr(err)
 	stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
 	// Check if the server is online
 	if stats.PacketsRecv > 0 {
