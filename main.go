@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -63,8 +64,8 @@ func main() {
 
 	checkNilErr(err)
 	// Iterate over zones
-	for index, zone := range zones {
-		logger.Info().Msgf("Zone name: %v; Zone ID: %v; Index: %v", zone.Name, zone.ID, index)
+	for _, zone := range zones {
+		logger.Info().Msgf("Zone name: %v; Zone ID: %v", zone.Name, zone.ID)
 	}
 	zoneId := args.CloudflareZoneID
 	if zoneId == "" {
@@ -87,10 +88,56 @@ func main() {
 	records, err := cloudflareApi.DNSRecords(ctx, zoneId, recordNameFilter)
 	checkNilErr(err)
 
-	// Iterate over records and output their name, type, and value
+	// Iterate over the filtered records and output their name, type, and value
+	// Also create a list of the record contents (In this case, IPs)
+	var ipContents []string
 	for _, record := range records {
 		logger.Info().Msgf("Record Name: %v; Record Type: %v; Record Value: %v", record.Name, record.Type, record.Content)
+		ipContents = append(ipContents, record.Content)
 	}
+	// Create primaryAddresses and backupAddresses slices from the args
+	primaryAddresses := strings.Split(args.PrimaryAddresses, ",")
+	backupAddresses := strings.Split(args.BackupAddresses, ",")
+
+	// Check what set of IPs are being used, primary or backup
+	if doAllElementsExist(ipContents, primaryAddresses) {
+		logger.Info().Msg("Using primary IP set")
+	} else if doAllElementsExist(ipContents, backupAddresses) {
+		logger.Info().Msg("Using backup IP set")
+	} else {
+		logger.Info().Msg("Not using a known IP set")
+	}
+}
+
+func ping(host string, port string) {
+	timeout := time.Duration(1 * time.Second)
+	_, err := net.DialTimeout("tcp", host+":"+port, timeout)
+	if err != nil {
+		fmt.Printf("%s %s %s\n", host, "not responding", err.Error())
+	} else {
+		fmt.Printf("%s %s %s\n", host, "responding on port:", port)
+	}
+}
+
+func doesElementExist(array []string, element any) bool {
+	for _, v := range array {
+		if v == element {
+			return true
+		}
+	}
+	return false
+}
+
+func doAllElementsExist(array []string, elements []string) bool {
+	// Keep track of which elements exist in array, and which do not
+	// If all elements exist, return true
+	// If any element does not exist, return false
+	for _, element := range elements {
+		if !doesElementExist(array, element) {
+			return false
+		}
+	}
+	return true
 }
 
 func checkNilErr(err error) {
