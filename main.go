@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -34,6 +35,8 @@ var args struct {
 	CloudflareApiToken string `arg:"env:CLOUDFLARE_API_TOKEN, required" help:"Cloudflare API token"`
 	CloudflareZoneID   string `arg:"env:CLOUDFLARE_ZONE_ID, required" help:"Cloudflare Zone ID"`
 	RecordName         string `arg:"env:RECORD_NAME, required" help:"Record name to use. Example: \"foo.example.com\"" `
+
+	LogLevel string `arg:"--log-level, env:LOG_LEVEL" help:"\"debug\", \"info\" (default), \"warning\", \"error\", or \"fatal\"" `
 }
 
 func main() {
@@ -46,7 +49,21 @@ func main() {
 	// CLI Logger:
 	// (.caller can display the line number)
 	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).Level(zerolog.DebugLevel).With().Timestamp().Logger()
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+
+	if args.LogLevel == "debug" {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else if args.LogLevel == "info" {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	} else if args.LogLevel == "warning" {
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	} else if args.LogLevel == "error" {
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	} else if args.LogLevel == "fatal" {
+		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	// Output flags
@@ -72,7 +89,7 @@ func main() {
 		fmt.Print("Zone ID: ")
 		zoneId = singleLineInput()
 	} else {
-		logger.Info().Msg("Using zone ID from enviroment variable")
+		logger.Info().Msg("Using predefined zone ID")
 	}
 
 	// Creating a cloudflare.DNSRecord object can allow for filtering
@@ -82,7 +99,7 @@ func main() {
 		fmt.Print("Record Name (example: foo.example.com): ")
 		recordName = singleLineInput()
 	} else {
-		logger.Info().Msg("Using record name from enviroment variable")
+		logger.Info().Msg("Using predefined record name")
 	}
 	recordNameFilter := cloudflare.DNSRecord{Name: recordName, Type: "A"}
 	records, err := cloudflareApi.DNSRecords(ctx, zoneId, recordNameFilter)
@@ -114,9 +131,10 @@ func main() {
 
 	online := true
 	// Ping the IPs to see if they are up, set online to false if none are up using ping()
+	logger.Debug().Msgf("Primary Addresses: %v", primaryAddresses)
 	for _, ip := range primaryAddresses {
 		// for i := 1; i < 65535; i++  // TCP 0 is reserved, so start at 1
-		// Convert i to a number
+		logger.Info().Msgf("Pinging %v", ip)
 		if ping(ip) {
 			online = true
 			break
@@ -124,21 +142,43 @@ func main() {
 			online = false
 		}
 	}
+	// if online {
+	// logger.Info().Msg(color.InGreen("Online"))
+	// } else {
+	// logger.Info().Msg(color.InRed("Offline"))
+	// }
 	logger.Info().Msgf("Online: %v", online)
 }
 
 func ping(host string) bool {
-	pinger, err := probing.NewPinger("www.google.com")
+	pinger, err := probing.NewPinger(host)
 	checkNilErr(err)
-	pinger.SetPrivileged(true)
 	pinger.Count = 3
-	err = pinger.Run() // Blocks until finished.
-	checkNilErr(err)
+	pinger.Timeout = 5 * time.Second
+	pinger.SetPrivileged(true)
+	for {
+		err = pinger.Run() // Blocks until finished.
+		if err == nil {
+			log.Debug().Msg("Ping successful")
+			break
+		} else if err.Error() == "listen ip4:icmp : socket: operation not permitted" && runtime.GOOS == "linux" {
+			logger.Error().
+				Err(err).
+				Str("help", "Run as root. For more information, check https://github.com/prometheus-community/pro-bing#linux").
+				Msg("Privileged ping failed, attempting unprivileged ping")
+			break
+		} else {
+			checkNilErr(err)
+			break
+		}
+	}
 	stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
 	// Check if the server is online
 	if stats.PacketsRecv > 0 {
+		logger.Info().Msgf("Host %v is online", host)
 		return true
 	} else {
+		logger.Info().Msgf("Host %v is offline", host)
 		return false
 	}
 }
