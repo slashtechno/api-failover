@@ -42,7 +42,6 @@ var args struct {
 func main() {
 	godotenv.Load()
 	arg.MustParse(&args)
-
 	// Set logging
 	// JSON Logger:
 	// logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
@@ -64,11 +63,8 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
 	// Output flags
 	logger.Info().Msgf("Backup IPs: %v; Primary IPs %v", args.BackupAddresses, args.PrimaryAddresses)
-
 	// Create an API client object
 	cloudflareApi, err := cloudflare.NewWithAPIToken(args.CloudflareApiToken)
 	checkNilErr(err)
@@ -159,14 +155,21 @@ func ping(host string) bool {
 	for {
 		err = pinger.Run() // Blocks until finished.
 		if err == nil {
-			log.Debug().Msg("Ping successful")
+			log.Debug().Msg("Ping sent successfully")
 			break
 		} else if err.Error() == "listen ip4:icmp : socket: operation not permitted" && runtime.GOOS == "linux" {
 			logger.Error().
 				Err(err).
 				Str("help", "Run as root. For more information, check https://github.com/prometheus-community/pro-bing#linux").
 				Msg("Privileged ping failed, attempting unprivileged ping")
-			break
+			pinger.SetPrivileged(false)
+			// No break here, so it will try again with unprivileged ping
+		} else if err.Error() == "socket: permission denied" && runtime.GOOS == "linux" {
+			logger.Fatal(). // Fatal because this is the last attempt at a ping
+					Err(err).
+					Str("help", "Privileged pings are disabled. To enable, run \"sudo sysctl -w net.ipv4.ping_group_range=\"0 2147483647\"\" For more information, check https://github.com/prometheus-community/pro-bing#linux").
+					Msg("Privileged ping failed")
+			break // This is unreachable, but the compiler doesn't know that
 		} else {
 			checkNilErr(err)
 			break
