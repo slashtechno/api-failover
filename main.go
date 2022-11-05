@@ -134,9 +134,8 @@ func main() {
 		if ping(ip) {
 			online = true
 			break
-		} else {
-			online = false
 		}
+		online = false
 	}
 	// if online {
 	// logger.Info().Msg(color.InGreen("Online"))
