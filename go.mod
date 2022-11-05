@@ -3,7 +3,6 @@ module github.com/slashtechno/api-failover
 go 1.19
 
 require (
-	github.com/TwiN/go-color v1.2.0
 	github.com/alexflint/go-arg v1.4.3
 	github.com/cloudflare/cloudflare-go v0.53.0
 	github.com/joho/godotenv v1.4.0
