@@ -14,7 +14,7 @@ import (
 	"github.com/joho/godotenv"
 	probing "github.com/prometheus-community/pro-bing"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	// "github.com/rs/zerolog/log"
 )
 
 // Set loggers
@@ -44,10 +44,10 @@ func main() {
 	arg.MustParse(&args)
 	// Set logging
 	// JSON Logger:
-	// logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
+	// logger = zerolog.New(os.Stderr).With().Timestamp().Caller().Logger()
 	// CLI Logger:
 	// (.caller can display the line number)
-	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).Level(zerolog.DebugLevel).With().Timestamp().Logger()
+	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).Level(zerolog.DebugLevel).With().Timestamp().Caller().Logger()
 
 	if args.LogLevel == "debug" {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -125,25 +125,26 @@ func main() {
 		// ipSet = "unknown"
 	}
 
-	online := true
+	// online := true
 	// Ping the IPs to see if they are up, set online to false if none are up using ping()
 	logger.Debug().Msgf("Primary Addresses: %v", primaryAddresses)
+	serversOnline := 0
 	for _, ip := range primaryAddresses {
-		// for i := 1; i < 65535; i++  // TCP 0 is reserved, so start at 1
 		logger.Info().Msgf("Pinging %v", ip)
 		if ping(ip) {
-			online = true
-			break
-		} else {
-			online = false
-		}
+			// online = true
+			// break
+			serversOnline++
+		} // else {
+		// 	online = false
+		// }
 	}
 	// if online {
 	// logger.Info().Msg(color.InGreen("Online"))
 	// } else {
 	// logger.Info().Msg(color.InRed("Offline"))
 	// }
-	logger.Info().Msgf("Online: %v", online)
+	logger.Info().Msgf("Online servers: %v", serversOnline)
 }
 
 func ping(host string) bool {
@@ -152,10 +153,11 @@ func ping(host string) bool {
 	pinger.Count = 3
 	pinger.Timeout = 5 * time.Second
 	pinger.SetPrivileged(true)
+	// Both Windows and the Docker image work with privileged pings by default
 	for {
 		err = pinger.Run() // Blocks until finished.
 		if err == nil {
-			log.Debug().Msg("Ping sent successfully")
+			logger.Debug().Msg("Ping sent successfully")
 			break
 		} else if err.Error() == "listen ip4:icmp : socket: operation not permitted" && runtime.GOOS == "linux" {
 			logger.Error().
