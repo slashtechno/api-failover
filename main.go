@@ -36,7 +36,7 @@ var args struct {
 	RecordName         string `arg:"env:RECORD_NAME, required" help:"Record name to use. Example: \"foo.example.com\"" `
 
 	LogLevel        string `arg:"--log-level, env:LOG_LEVEL" help:"\"debug\", \"info\" (default), \"warning\", \"error\", or \"fatal\"" `
-	ForceLogColor   bool   `arg:"--force-log-color, env:FORCE_LOG_COLOR" help:"Force colored logs" `
+	ForceLogColor   bool   `arg:"--force-log-color, env:FORCE_LOG_COLOR" help:"Force colored logs" default:"true"`
 	DisableLogColor bool   `arg:"--disable-log-color, env:DISABLE_LOG_COLOR" help:"Disable colored logs - Overrides --force-log-color" `
 }
 
