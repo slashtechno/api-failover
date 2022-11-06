@@ -7,7 +7,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.53.0
 	github.com/joho/godotenv v1.4.0
 	github.com/prometheus-community/pro-bing v0.1.0
-	github.com/rs/zerolog v1.28.0
+	github.com/sirupsen/logrus v1.9.0
 )
 
 require (
@@ -16,8 +16,6 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect

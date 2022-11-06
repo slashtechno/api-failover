@@ -13,7 +13,7 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/joho/godotenv"
 	probing "github.com/prometheus-community/pro-bing"
-	"github.com/rs/zerolog"
+	"github.com/sirupsen/logrus"
 	// "github.com/rs/zerolog/log"
 )
 
@@ -25,7 +25,6 @@ import (
 //	ErrorLogger   = log.New(os.Stdout, "ERROR: ", log.LstdFlags|log.Lshortfile)
 //
 // )
-var logger zerolog.Logger
 
 var args struct {
 	// Primary []string `arg:"-p, --primary, required, separate, env:PRIMARY_IPs" help:"Primary IPs (A record)"`
@@ -36,35 +35,34 @@ var args struct {
 	CloudflareZoneID   string `arg:"env:CLOUDFLARE_ZONE_ID, required" help:"Cloudflare Zone ID"`
 	RecordName         string `arg:"env:RECORD_NAME, required" help:"Record name to use. Example: \"foo.example.com\"" `
 
-	LogLevel string `arg:"--log-level, env:LOG_LEVEL" help:"\"debug\", \"info\" (default), \"warning\", \"error\", or \"fatal\"" `
+	LogLevel        string `arg:"--log-level, env:LOG_LEVEL" help:"\"debug\", \"info\" (default), \"warning\", \"error\", or \"fatal\"" `
+	ForceLogColor   bool   `arg:"--force-log-color, env:FORCE_LOG_COLOR" help:"Force colored logs"" `
+	DisableLogColor bool   `arg:"--disable-log-color, env:DISABLE_LOG_COLOR" help:"Disable colored logs - Overrides --force-log-color"" `
 }
 
 func main() {
 	godotenv.Load()
 	arg.MustParse(&args)
-	// Set logging
-	// JSON Logger:
-	// logger = zerolog.New(os.Stderr).With().Timestamp().Caller().Logger()
-	// CLI Logger:
-	// (.caller can display the line number)
-	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).Level(zerolog.DebugLevel).With().Timestamp().Caller().Logger()
+
+	logrus.SetOutput(os.Stdout)
+	logrus.SetFormatter(&logrus.TextFormatter{PadLevelText: true, ForceColors: args.ForceLogColor, DisableColors: args.DisableLogColor})
 
 	if args.LogLevel == "debug" {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		logrus.SetLevel(logrus.DebugLevel)
 	} else if args.LogLevel == "info" {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		logrus.SetLevel(logrus.InfoLevel)
 	} else if args.LogLevel == "warning" {
-		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+		logrus.SetLevel(logrus.WarnLevel)
 	} else if args.LogLevel == "error" {
-		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+		logrus.SetLevel(logrus.ErrorLevel)
 	} else if args.LogLevel == "fatal" {
-		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+		logrus.SetLevel(logrus.FatalLevel)
 	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		logrus.SetLevel(logrus.InfoLevel)
 	}
 
 	// Output flags
-	logger.Info().Msgf("Backup IPs: %v; Primary IPs %v", args.BackupAddresses, args.PrimaryAddresses)
+	logrus.Infof("Backup IPs: %v; Primary IPs %v", args.BackupAddresses, args.PrimaryAddresses)
 	// Create an API client object
 	cloudflareApi, err := cloudflare.NewWithAPIToken(args.CloudflareApiToken)
 	checkNilErr(err)
@@ -72,20 +70,20 @@ func main() {
 
 	userDetails, err := cloudflareApi.UserDetails(ctx)
 	checkNilErr(err)
-	logger.Info().Msgf("User Email: %v; ", userDetails.Email)
+	logrus.Infof("User Email: %v; ", userDetails.Email)
 	zones, err := cloudflareApi.ListZones(ctx)
 
 	checkNilErr(err)
 	// Iterate over zones
 	for _, zone := range zones {
-		logger.Info().Msgf("Zone name: %v; Zone ID: %v", zone.Name, zone.ID)
+		logrus.Infof("Zone name: %v; Zone ID: %v", zone.Name, zone.ID)
 	}
 	zoneId := args.CloudflareZoneID
 	if zoneId == "" {
 		fmt.Print("Zone ID: ")
 		zoneId = singleLineInput()
 	} else {
-		logger.Info().Msg("Using predefined zone ID")
+		logrus.Info("Using predefined zone ID")
 	}
 
 	// Creating a cloudflare.DNSRecord object can allow for filtering
@@ -95,7 +93,7 @@ func main() {
 		fmt.Print("Record Name (example: foo.example.com): ")
 		recordName = singleLineInput()
 	} else {
-		logger.Info().Msg("Using predefined record name")
+		logrus.Info("Using predefined record name")
 	}
 	recordNameFilter := cloudflare.DNSRecord{Name: recordName, Type: "A"}
 	records, err := cloudflareApi.DNSRecords(ctx, zoneId, recordNameFilter)
@@ -105,7 +103,7 @@ func main() {
 	// Also create a list of the record contents (In this case, IPs)
 	var ipContents []string
 	for _, record := range records {
-		logger.Info().Msgf("Record Name: %v; Record Type: %v; Record Value: %v", record.Name, record.Type, record.Content)
+		logrus.Infof("Record Name: %v; Record Type: %v; Record Value: %v", record.Name, record.Type, record.Content)
 		ipContents = append(ipContents, record.Content)
 	}
 	// Create primaryAddresses and backupAddresses slices from the args
@@ -115,36 +113,35 @@ func main() {
 	// Check what set of IPs are being used, primary or backup
 	// var ipSet string
 	if doAllElementsExist(ipContents, primaryAddresses) {
-		logger.Info().Msg("Using primary IP set")
+		logrus.Info("Using primary IP set")
 		// ipSet = "primary"
 	} else if doAllElementsExist(ipContents, backupAddresses) {
-		logger.Info().Msg("Using backup IP set")
+		logrus.Info("Using backup IP set")
 		// ipSet = "backup"
 	} else {
-		logger.Info().Msg("Not using a known IP set")
+		logrus.Info("Not using a known IP set")
 		// ipSet = "unknown"
 	}
 
 	// online := true
 	// Ping the IPs to see if they are up, set online to false if none are up using ping()
-	logger.Debug().Msgf("Primary Addresses: %v", primaryAddresses)
+	logrus.Debugf("Primary Addresses: %v", primaryAddresses)
 	serversOnline := 0
 	for _, ip := range primaryAddresses {
-		logger.Info().Msgf("Pinging %v", ip)
+		logrus.Infof("Pinging %v", ip)
 		if ping(ip) {
 			// online = true
 			// break
 			serversOnline++
-		} // else {
-		// 	online = false
-		// }
+		}
 	}
 	// if online {
-	// logger.Info().Msg(color.InGreen("Online"))
+	// logrus.Info(color.InGreen("Online"))
 	// } else {
-	// logger.Info().Msg(color.InRed("Offline"))
+	// logrus.Info(color.InRed("Offline"))
 	// }
-	logger.Info().Msgf("Online servers: %v", serversOnline)
+	logrus.Infof("Online servers: %v", serversOnline)
+
 }
 
 func ping(host string) bool {
@@ -157,20 +154,21 @@ func ping(host string) bool {
 	for {
 		err = pinger.Run() // Blocks until finished.
 		if err == nil {
-			logger.Debug().Msg("Ping sent successfully")
+			logrus.Debug("Ping sent successfully")
 			break
 		} else if err.Error() == "listen ip4:icmp : socket: operation not permitted" && runtime.GOOS == "linux" {
-			logger.Error().
-				Err(err).
-				Str("help", "Run as root. For more information, check https://github.com/prometheus-community/pro-bing#linux").
-				Msg("Privileged ping failed, attempting unprivileged ping")
+			logrus.
+				WithField("error", err).
+				WithField("help", "Run as root. For more information, check https://github.com/prometheus-community/pro-bing#linux").
+				Warn("Privileged ping failed, attempting unprivileged ping")
 			pinger.SetPrivileged(false)
 			// No break here, so it will try again with unprivileged ping
 		} else if err.Error() == "socket: permission denied" && runtime.GOOS == "linux" {
-			logger.Fatal(). // Fatal because this is the last attempt at a ping
-					Err(err).
-					Str("help", "Privileged pings are disabled. To enable, run \"sudo sysctl -w net.ipv4.ping_group_range=\"0 2147483647\"\" For more information, check https://github.com/prometheus-community/pro-bing#linux").
-					Msg("Privileged ping failed")
+			logrus.
+				WithField("error", err).
+				WithField("help", "Unprivileged pings are disabled. To enable, run \"sudo sysctl -w net.ipv4.ping_group_range=\"0 2147483647\"\" For more information, check https://github.com/prometheus-community/pro-bing#linux").
+				Fatal("Unprivileged ping failed") // Fatal because this is the last attempt at a ping
+
 			break // This is unreachable, but the compiler doesn't know that
 		} else {
 			checkNilErr(err)
@@ -180,10 +178,10 @@ func ping(host string) bool {
 	stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
 	// Check if the server is online
 	if stats.PacketsRecv > 0 {
-		logger.Info().Msgf("Host %v is online", host)
+		logrus.Infof("Host %v is online", host)
 		return true
 	} else {
-		logger.Info().Msgf("Host %v is offline", host)
+		logrus.Infof("Host %v is offline", host)
 		return false
 	}
 }
@@ -212,9 +210,9 @@ func doAllElementsExist(array []string, elements []string) bool {
 func checkNilErr(err error) {
 	if err != nil {
 		// log.Fatalln("Error:\n%v\n", err)
-		logger.Error().
-			Err(err).
-			Msg("something happened!")
+		logrus.
+			WithField("error", err).
+			Error("Something happened!")
 	}
 }
 func singleLineInput() string {
