@@ -141,7 +141,6 @@ func main() {
 	// logrus.Info(color.InRed("Offline"))
 	// }
 	logrus.Infof("Online servers: %v", serversOnline)
-
 }
 
 func ping(host string) bool {
@@ -215,6 +214,7 @@ func checkNilErr(err error) {
 			Error("Something happened!")
 	}
 }
+
 func singleLineInput() string {
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')

@@ -12,5 +12,5 @@ enabled = true
   import_root = "github.com/slashtechno/api-failover"
 
 [[transformers]]
-name = "gofmt"
+name = "gofumpt"
 enabled = true
