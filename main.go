@@ -14,7 +14,6 @@ import (
 	"github.com/joho/godotenv"
 	probing "github.com/prometheus-community/pro-bing"
 	"github.com/sirupsen/logrus"
-	// "github.com/rs/zerolog/log"
 )
 
 // Set loggers
@@ -29,8 +28,8 @@ import (
 var args struct {
 	// Primary []string `arg:"-p, --primary, required, separate, env:PRIMARY_IPs" help:"Primary IPs (A record)"`
 	// Backup  []string `arg:"-b, --backup, required, separate, env:BACKUP_IPs" help:"Backup IPs (A record)" `
-	PrimaryAddresses   string `arg:"-p, --primary, env:PRIMARY_IPs" help:"Primary IP addresses to be created as A records - IPs should be comma-separated without spaces. Example: \"0.0.0.0,0.0.0.0\"" `
-	BackupAddresses    string `arg:"-b, --backup, env:BACKUP_IPs" help:"Backup IP addresses to be created as A records - IPs should be comma-separated without spaces. Example: \"0.0.0.0,0.0.0.0\"" `
+	PrimaryHosts       string `arg:"-p, --primary, env:PRIMARY_IPs" help:"Primary hosts to be created as A records - IPs should be comma-separated without spaces. Example: \"0.0.0.0,0.0.0.0\"" `
+	BackupHosts        string `arg:"-b, --backup, env:BACKUP_IPs" help:"Backup hosts to be created as A records - IPs should be comma-separated without spaces. Example: \"0.0.0.0,0.0.0.0\"" `
 	CloudflareApiToken string `arg:"env:CLOUDFLARE_API_TOKEN, required" help:"Cloudflare API token"`
 	CloudflareZoneID   string `arg:"env:CLOUDFLARE_ZONE_ID, required" help:"Cloudflare Zone ID"`
 	RecordName         string `arg:"env:RECORD_NAME, required" help:"Record name to use. Example: \"foo.example.com\"" `
@@ -40,12 +39,23 @@ var args struct {
 	DisableLogColor bool   `arg:"--disable-log-color, env:DISABLE_LOG_COLOR" help:"Disable colored logs - Overrides --force-log-color" `
 }
 
+type HostSet struct {
+	Primary struct {
+		Hosts       []string `json:"hosts"`
+		OnlineHosts []string `json:"OnlineHosts"`
+	} `json:"primary"`
+	Backup struct {
+		Hosts       []string `json:"hosts"`
+		OnlineHosts []string `json:"OnlineHosts"`
+	} `json:"backup"`
+}
+
 func main() {
 	godotenv.Load()
 	arg.MustParse(&args)
 
 	logrus.SetOutput(os.Stdout)
-	logrus.SetFormatter(&logrus.TextFormatter{PadLevelText: true, ForceColors: args.ForceLogColor, DisableColors: args.DisableLogColor})
+	logrus.SetFormatter(&logrus.TextFormatter{PadLevelText: true, DisableQuote: true, ForceColors: args.ForceLogColor, DisableColors: args.DisableLogColor})
 
 	if args.LogLevel == "debug" {
 		logrus.SetLevel(logrus.DebugLevel)
@@ -61,8 +71,8 @@ func main() {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
 
-	// Output flags
-	logrus.Infof("Backup IPs: %v; Primary IPs %v", args.BackupAddresses, args.PrimaryAddresses)
+	// Output configuation
+	logrus.Infof("Backup hosts: %v; Primary hosts %v", args.BackupHosts, args.PrimaryHosts)
 	// Create an API client object
 	cloudflareApi, err := cloudflare.NewWithAPIToken(args.CloudflareApiToken)
 	checkNilErr(err)
@@ -106,41 +116,110 @@ func main() {
 		logrus.Infof("Record Name: %v; Record Type: %v; Record Value: %v", record.Name, record.Type, record.Content)
 		ipContents = append(ipContents, record.Content)
 	}
-	// Create primaryAddresses and backupAddresses slices from the args
-	primaryAddresses := strings.Split(args.PrimaryAddresses, ",")
-	backupAddresses := strings.Split(args.BackupAddresses, ",")
 
-	// Check what set of IPs are being used, primary or backup
-	// var ipSet string
-	if doAllElementsExist(ipContents, primaryAddresses) {
+	// Create a HostSet object
+	hostSet := HostSet{}
+	hostSet.Primary.Hosts = strings.Split(args.PrimaryHosts, ",")
+	hostSet.Backup.Hosts = strings.Split(args.BackupHosts, ",")
+
+	// Check what set of hosts is being used, primary or backup
+	var ipSet string
+	if doAllElementsExist(ipContents, hostSet.Primary.Hosts) {
 		logrus.Info("Using primary IP set")
-		// ipSet = "primary"
-	} else if doAllElementsExist(ipContents, backupAddresses) {
+		ipSet = "primary"
+	} else if doAllElementsExist(ipContents, hostSet.Backup.Hosts) {
 		logrus.Info("Using backup IP set")
-		// ipSet = "backup"
+		ipSet = "backup"
 	} else {
 		logrus.Info("Not using a known IP set")
-		// ipSet = "unknown"
+		ipSet = "unknown"
 	}
 
 	// online := true
-	// Ping the IPs to see if they are up, set online to false if none are up using ping()
-	logrus.Debugf("Primary Addresses: %v", primaryAddresses)
-	serversOnline := 0
-	for _, ip := range primaryAddresses {
+	// Ping the primary hosts to see if they are up, set online to false if none are up using ping()
+	logrus.Debugf("Primary hosts: %v", hostSet.Primary.Hosts)
+	for _, ip := range hostSet.Primary.Hosts {
 		logrus.Infof("Pinging %v", ip)
 		if ping(ip) {
-			// online = true
-			// break
-			serversOnline++
+			// Append the IP to the list of online hosts
+			hostSet.Primary.OnlineHosts = append(hostSet.Primary.OnlineHosts, ip)
 		}
 	}
-	// if online {
-	// logrus.Info(color.InGreen("Online"))
-	// } else {
-	// logrus.Info(color.InRed("Offline"))
-	// }
-	logrus.Infof("Online servers: %v", serversOnline)
+	logrus.Infof("Online primary hosts: %v", hostSet.Primary.OnlineHosts)
+
+	// Ping the backup hosts to see if they are up, set online to false if none are up using ping()
+	logrus.Debugf("Backup hosts: %v", hostSet.Backup.Hosts)
+	for _, ip := range hostSet.Backup.Hosts {
+		logrus.Infof("Pinging %v", ip)
+		if ping(ip) {
+			// Append the IP to the list of online hosts
+			hostSet.Backup.OnlineHosts = append(hostSet.Backup.OnlineHosts, ip)
+		}
+	}
+	logrus.Infof("Online backup hosts: %v", len(hostSet.Backup.OnlineHosts))
+
+	if len(hostSet.Primary.Hosts) > 0 && ipSet == "primary" {
+		logrus.Info("Primary hosts are up and record is set to primary, doing nothing")
+	} else if len(hostSet.Primary.Hosts) > 0 && ipSet == "backup" {
+		// If at least one primary host is up and the records are set to backup hosts, update the records to the primary hosts
+
+		// If the number of current records is equal to the number of primary hosts, update the records
+		if len(records) == len(hostSet.Primary.Hosts) {
+			logrus.Info("Updating records to primary IPs")
+			for _, record := range records {
+				record.Content = hostSet.Primary.Hosts[0]
+				err = cloudflareApi.UpdateDNSRecord(ctx, zoneId, record.ID, record)
+				checkNilErr(err)
+			}
+		} else {
+			// If the number of current records is not equal to the number of primary hosts, delete all records and create new ones
+			logrus.Info("Deleting records and creating new ones")
+			for _, record := range records {
+				err = cloudflareApi.DeleteDNSRecord(ctx, zoneId, record.ID)
+				checkNilErr(err)
+			}
+			for _, ip := range hostSet.Primary.Hosts {
+				record := cloudflare.DNSRecord{
+					Type:    "A",
+					Name:    recordName,
+					Content: ip,
+					TTL:     1,
+				}
+				_, err = cloudflareApi.CreateDNSRecord(ctx, zoneId, record)
+				checkNilErr(err)
+			}
+		}
+	} else if len(hostSet.Primary.Hosts) == 0 && ipSet == "primary" {
+		// If no primary hosts are up and the records are set to primary hosts, update the records to the backup hosts
+
+		// If the number of current records is equal to the number of backup hosts, update the records
+		if len(records) == len(hostSet.Backup.Hosts) {
+			logrus.Info("Updating records to backup IPs")
+			for _, record := range records {
+				record.Content = hostSet.Backup.Hosts[0]
+				err = cloudflareApi.UpdateDNSRecord(ctx, zoneId, record.ID, record)
+				checkNilErr(err)
+			}
+		} else {
+			// If the number of current records is not equal to the number of backup hosts, delete all records and create new ones
+			logrus.Info("Deleting records and creating new ones")
+			for _, record := range records {
+				err = cloudflareApi.DeleteDNSRecord(ctx, zoneId, record.ID)
+				checkNilErr(err)
+			}
+			for _, ip := range hostSet.Backup.Hosts {
+				record := cloudflare.DNSRecord{
+					Type:    "A",
+					Name:    recordName,
+					Content: ip,
+					TTL:     1,
+				}
+				_, err = cloudflareApi.CreateDNSRecord(ctx, zoneId, record)
+				checkNilErr(err)
+			}
+		}
+	}
+
 }
 
 func ping(host string) bool {
