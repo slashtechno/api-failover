@@ -219,7 +219,6 @@ func main() {
 			}
 		}
 	}
-
 }
 
 func ping(host string) bool {
