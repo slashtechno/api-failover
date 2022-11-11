@@ -135,8 +135,8 @@ func main() {
 		ipSet = "unknown"
 	}
 
-	// online := true
-	// Ping the primary hosts to see if they are up, set online to false if none are up using ping()
+	// Ping the hosts and append the online hosts to the HostSet object
+	// Ping primary hosts
 	logrus.Debugf("Primary hosts: %v", hostSet.Primary.Hosts)
 	for _, ip := range hostSet.Primary.Hosts {
 		logrus.Infof("Pinging %v", ip)
@@ -146,8 +146,7 @@ func main() {
 		}
 	}
 	logrus.Infof("Online primary hosts: %v", hostSet.Primary.OnlineHosts)
-
-	// Ping the backup hosts to see if they are up, set online to false if none are up using ping()
+	// Ping backup hosts
 	logrus.Debugf("Backup hosts: %v", hostSet.Backup.Hosts)
 	for _, ip := range hostSet.Backup.Hosts {
 		logrus.Infof("Pinging %v", ip)
@@ -158,66 +157,71 @@ func main() {
 	}
 	logrus.Infof("Online backup hosts: %v", len(hostSet.Backup.OnlineHosts))
 
-	if len(hostSet.Primary.Hosts) > 0 && ipSet == "primary" {
-		logrus.Info("Primary hosts are up and record is set to primary, doing nothing")
-	} else if len(hostSet.Primary.Hosts) > 0 && ipSet == "backup" {
-		// If at least one primary host is up and the records are set to backup hosts, update the records to the primary hosts
+	// Only switch records if both sets of hosts have been specified
+	if args.BackupHosts != "" && args.PrimaryHosts != "" {
+		if len(hostSet.Primary.Hosts) > 0 && ipSet == "primary" {
+			logrus.Info("Primary hosts are up and record is set to primary, doing nothing")
+		} else if len(hostSet.Primary.Hosts) > 0 && ipSet == "backup" {
+			// If at least one primary host is up and the records are set to backup hosts, update the records to the primary hosts
 
-		// If the number of current records is equal to the number of primary hosts, update the records
-		if len(records) == len(hostSet.Primary.Hosts) {
-			logrus.Info("Updating records to primary IPs")
-			for _, record := range records {
-				record.Content = hostSet.Primary.Hosts[0]
-				err = cloudflareApi.UpdateDNSRecord(ctx, zoneId, record.ID, record)
-				checkNilErr(err)
-			}
-		} else {
-			// If the number of current records is not equal to the number of primary hosts, delete all records and create new ones
-			logrus.Info("Deleting records and creating new ones")
-			for _, record := range records {
-				err = cloudflareApi.DeleteDNSRecord(ctx, zoneId, record.ID)
-				checkNilErr(err)
-			}
-			for _, ip := range hostSet.Primary.Hosts {
-				record := cloudflare.DNSRecord{
-					Type:    "A",
-					Name:    recordName,
-					Content: ip,
-					TTL:     1,
+			// If the number of current records is equal to the number of primary hosts, update the records
+			if len(records) == len(hostSet.Primary.Hosts) {
+				logrus.Info("Updating records to primary IPs")
+				for _, record := range records {
+					record.Content = hostSet.Primary.Hosts[0]
+					err = cloudflareApi.UpdateDNSRecord(ctx, zoneId, record.ID, record)
+					checkNilErr(err)
 				}
-				_, err = cloudflareApi.CreateDNSRecord(ctx, zoneId, record)
-				checkNilErr(err)
+			} else {
+				// If the number of current records is not equal to the number of primary hosts, delete all records and create new ones
+				logrus.Info("Deleting records and creating new ones")
+				for _, record := range records {
+					err = cloudflareApi.DeleteDNSRecord(ctx, zoneId, record.ID)
+					checkNilErr(err)
+				}
+				for _, ip := range hostSet.Primary.Hosts {
+					record := cloudflare.DNSRecord{
+						Type:    "A",
+						Name:    recordName,
+						Content: ip,
+						TTL:     1,
+					}
+					_, err = cloudflareApi.CreateDNSRecord(ctx, zoneId, record)
+					checkNilErr(err)
+				}
+			}
+		} else if len(hostSet.Primary.Hosts) == 0 && ipSet == "primary" {
+			// If no primary hosts are up and the records are set to primary hosts, update the records to the backup hosts
+
+			// If the number of current records is equal to the number of backup hosts, update the records
+			if len(records) == len(hostSet.Backup.Hosts) {
+				logrus.Info("Updating records to backup IPs")
+				for _, record := range records {
+					record.Content = hostSet.Backup.Hosts[0]
+					err = cloudflareApi.UpdateDNSRecord(ctx, zoneId, record.ID, record)
+					checkNilErr(err)
+				}
+			} else {
+				// If the number of current records is not equal to the number of backup hosts, delete all records and create new ones
+				logrus.Info("Deleting records and creating new ones")
+				for _, record := range records {
+					err = cloudflareApi.DeleteDNSRecord(ctx, zoneId, record.ID)
+					checkNilErr(err)
+				}
+				for _, ip := range hostSet.Backup.Hosts {
+					record := cloudflare.DNSRecord{
+						Type:    "A",
+						Name:    recordName,
+						Content: ip,
+						TTL:     1,
+					}
+					_, err = cloudflareApi.CreateDNSRecord(ctx, zoneId, record)
+					checkNilErr(err)
+				}
 			}
 		}
-	} else if len(hostSet.Primary.Hosts) == 0 && ipSet == "primary" {
-		// If no primary hosts are up and the records are set to primary hosts, update the records to the backup hosts
-
-		// If the number of current records is equal to the number of backup hosts, update the records
-		if len(records) == len(hostSet.Backup.Hosts) {
-			logrus.Info("Updating records to backup IPs")
-			for _, record := range records {
-				record.Content = hostSet.Backup.Hosts[0]
-				err = cloudflareApi.UpdateDNSRecord(ctx, zoneId, record.ID, record)
-				checkNilErr(err)
-			}
-		} else {
-			// If the number of current records is not equal to the number of backup hosts, delete all records and create new ones
-			logrus.Info("Deleting records and creating new ones")
-			for _, record := range records {
-				err = cloudflareApi.DeleteDNSRecord(ctx, zoneId, record.ID)
-				checkNilErr(err)
-			}
-			for _, ip := range hostSet.Backup.Hosts {
-				record := cloudflare.DNSRecord{
-					Type:    "A",
-					Name:    recordName,
-					Content: ip,
-					TTL:     1,
-				}
-				_, err = cloudflareApi.CreateDNSRecord(ctx, zoneId, record)
-				checkNilErr(err)
-			}
-		}
+	} else {
+		logrus.Info("No primary or backup hosts specified, doing nothing")
 	}
 }
 
