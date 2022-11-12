@@ -26,8 +26,8 @@ Docker images can either be built locally, or pulled from the Github Container R
 An advantage to running with Docker is that the software is isolated which can reduce the possiblity of errors. In addition, it can increase security.
 To pull and run, the following commands can be used:
 ```bash
-docker pull ghcr.io/slashtechno/api-failover:latest
-# Example run command
+docker pull ghcr.io/slashtechno/api-failover:latest 
+# If the image isn't pulled manually, the following command will pull it automatically before running
 docker run -e CLOUDFLARE_API_TOKEN="token" -e CLOUDFLARE_ZONE_ID="zoneid" -e RECORD_NAME="RECORDNAME" -e PRIMARY_IPs="0.0.0.0,0.0.0.1,0.0.0.2" -e BACKUP_IPs="0.0.0.3,0.0.0.4,0.0.0.5" -it --rm ghcr.io/slashtechno/api-failover
 ```  
 ### Compiling locally  
