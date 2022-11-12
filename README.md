@@ -22,7 +22,7 @@ For more information, check the Linux section in the  [pro-bing](https://github.
 Precompiled releases are build automatically by Github Actions and can be downloaded from the [releases](https://github.com/slashtechno/api-failover/releases) page  
 After downloading for the appropriate platform, the program can be run directly  
 ### Docker  
-Docker images can either be built locally, or pulled from the Github Container Registry  
+Docker images can either be built locally, or pulled from the [Github Container Registry](https://github.com/slashtechno/api-failover/pkgs/container/api-failover)  
 An advantage to running with Docker is that the software is isolated which can reduce the possiblity of errors. In addition, it can increase security.
 To pull and run, the following commands can be used:
 ```bash
