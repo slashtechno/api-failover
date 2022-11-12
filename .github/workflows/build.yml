@@ -19,6 +19,7 @@ jobs:
         with:
           go-version: 1.19
           check-latest: true
+          cache: true
       - name: Build (Not Windows)
         if: matrix.os != 'windows-latest'
         run: 'go build -v -o api-failover_compiled_${{ matrix.os }}'
