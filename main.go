@@ -33,8 +33,9 @@ var args struct {
 	CloudflareApiToken string `arg:"env:CLOUDFLARE_API_TOKEN, required" help:"Cloudflare API token"`
 	CloudflareZoneID   string `arg:"env:CLOUDFLARE_ZONE_ID, required" help:"Cloudflare Zone ID"`
 	RecordName         string `arg:"env:RECORD_NAME, required" help:"Record name to use. Example: \"foo.example.com\"" `
+	ProxyRecords       bool   `arg:"env:PROXY_RECORDS" help:"Proxy records" default:"true"`
 
-	LogLevel        string `arg:"--log-level, env:LOG_LEVEL" help:"\"debug\", \"info\" (default), \"warning\", \"error\", or \"fatal\"" `
+	LogLevel        string `arg:"--log-level, env:LOG_LEVEL" help:"\"debug\", \"info\" (default), \"warning\", \"error\", or \"fatal\"" ` // ~~Could~~ Should add default value
 	ForceLogColor   bool   `arg:"--force-log-color, env:FORCE_LOG_COLOR" help:"Force colored logs" default:"true"`
 	DisableLogColor bool   `arg:"--disable-log-color, env:DISABLE_LOG_COLOR" help:"Disable colored logs - Overrides --force-log-color" `
 }
@@ -159,16 +160,20 @@ func main() {
 
 	// Only switch records if both sets of hosts have been specified
 	if args.BackupHosts != "" && args.PrimaryHosts != "" {
-		if len(hostSet.Primary.Hosts) > 0 && ipSet == "primary" {
+		if len(hostSet.Primary.OnlineHosts) > 0 && ipSet == "primary" {
+			logrus.Debugf("Primary hosts: %v\nPrimary hosts length %v", hostSet.Primary.Hosts, len(hostSet.Primary.Hosts))
 			logrus.Info("Primary hosts are up and record is set to primary, doing nothing")
-		} else if len(hostSet.Primary.Hosts) > 0 && ipSet == "backup" {
+		} else if len(hostSet.Primary.OnlineHosts) > 0 && ipSet == "backup" {
 			// If at least one primary host is up and the records are set to backup hosts, update the records to the primary hosts
 
 			// If the number of current records is equal to the number of primary hosts, update the records
 			if len(records) == len(hostSet.Primary.Hosts) {
 				logrus.Info("Updating records to primary IPs")
-				for _, record := range records {
-					record.Content = hostSet.Primary.Hosts[0]
+				for i, record := range records {
+					// Update the record variable
+					record.Content = hostSet.Primary.Hosts[i]
+					record.Proxied = &args.ProxyRecords
+					// Update the record on Cloudflare
 					err = cloudflareApi.UpdateDNSRecord(ctx, zoneId, record.ID, record)
 					checkNilErr(err)
 				}
@@ -185,19 +190,21 @@ func main() {
 						Name:    recordName,
 						Content: ip,
 						TTL:     1,
+						Proxied: &args.ProxyRecords,
 					}
 					_, err = cloudflareApi.CreateDNSRecord(ctx, zoneId, record)
 					checkNilErr(err)
 				}
 			}
-		} else if len(hostSet.Primary.Hosts) == 0 && ipSet == "primary" {
+		} else if len(hostSet.Primary.OnlineHosts) == 0 && ipSet == "primary" {
 			// If no primary hosts are up and the records are set to primary hosts, update the records to the backup hosts
 
 			// If the number of current records is equal to the number of backup hosts, update the records
 			if len(records) == len(hostSet.Backup.Hosts) {
 				logrus.Info("Updating records to backup IPs")
-				for _, record := range records {
-					record.Content = hostSet.Backup.Hosts[0]
+				for i, record := range records {
+					record.Content = hostSet.Backup.Hosts[i]
+					record.Proxied = &args.ProxyRecords
 					err = cloudflareApi.UpdateDNSRecord(ctx, zoneId, record.ID, record)
 					checkNilErr(err)
 				}
@@ -214,11 +221,16 @@ func main() {
 						Name:    recordName,
 						Content: ip,
 						TTL:     1,
+						Proxied: &args.ProxyRecords,
 					}
 					_, err = cloudflareApi.CreateDNSRecord(ctx, zoneId, record)
 					checkNilErr(err)
 				}
 			}
+		} else if ipSet == "unknown" {
+			// If the record is set to an unknown IP set, don't do antyhing
+			logrus.Info("Record is set to an unknown IP set, doing nothing")
+
 		}
 	} else {
 		logrus.Info("No primary or backup hosts specified, doing nothing")

@@ -52,7 +52,7 @@ jobs:
         files: |
           /home/runner/work/api-failover/binaries.zip 
           /home/runner/work/api-failover/builds/*
-    - name:
+    - name: Upload binaries
       uses: actions/upload-artifact@v3
       with:
         name: binaries
