@@ -241,9 +241,12 @@ func main() {
 		if !args.LoopProgram {
 			os.Exit(0)
 		}
+	
+		// Will only run if the program is looping 
 		time.Sleep(time.Duration(time.Duration(1).Seconds()))
 		godotenv.Load()
 		arg.MustParse(&args)
+	
 	}
 }
 
