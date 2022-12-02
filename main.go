@@ -233,7 +233,6 @@ func main() {
 			} else if ipSet == "unknown" {
 				// If the record is set to an unknown IP set, don't do antyhing
 				logrus.Info("Record is set to an unknown IP set, doing nothing")
-
 			}
 		} else {
 			logrus.Info("No primary or backup hosts specified, doing nothing")
