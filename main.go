@@ -240,15 +240,13 @@ func main() {
 		// If loop is set to false, exit the program
 		if !args.LoopProgram {
 			os.Exit(0)
-		} else {
-			// Sleep for 1 second
-			time.Sleep(time.Duration(time.Duration(1).Seconds()))
-
-			// Reload the configuration and .env file to check for changes
-			godotenv.Load()
-			arg.MustParse(&args)
-
 		}
+
+		// Will only run if the program is looping
+		time.Sleep(time.Duration(time.Duration(1).Seconds()))
+		godotenv.Load()
+		arg.MustParse(&args)
+
 	}
 }
 
