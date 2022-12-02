@@ -1,8 +1,8 @@
 
 # API-Failover  
+[![Continuous Integration](https://github.com/slashtechno/api-failover/actions/workflows/ci.yml/badge.svg)](https://github.com/slashtechno/api-failover/actions/workflows/ci.yml) [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/) [![Create and publish a Docker image](https://github.com/slashtechno/api-failover/actions/workflows/build-Docker-image.yml/badge.svg)](https://github.com/slashtechno/api-failover/actions/workflows/build-Docker-image.yml)   
 Using the Cloudflare API to change DNS records to maximize uptime
-## Badges  
-[![Continuous Integration](https://github.com/slashtechno/api-failover/actions/workflows/ci.yml/badge.svg)](https://github.com/slashtechno/api-failover/actions/workflows/ci.yml) [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/) [![Create and publish a Docker image](https://github.com/slashtechno/api-failover/actions/workflows/build-Docker-image.yml/badge.svg)](https://github.com/slashtechno/api-failover/actions/workflows/build-Docker-image.yml)  
+
 ## Usage/Examples  
 Necessary data can be passed via environment vairables or CLI flags  
 ```bash
