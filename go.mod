@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/alexflint/go-arg v1.4.3
 	github.com/cloudflare/cloudflare-go v0.57.1
-	github.com/joho/godotenv v1.4.0
+	github.com/joho/godotenv v1.5.1
 	github.com/prometheus-community/pro-bing v0.1.0
 	github.com/sirupsen/logrus v1.9.0
 )
