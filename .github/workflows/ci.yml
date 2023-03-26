@@ -33,12 +33,7 @@ jobs:
         # targets: windows/amd64,linux/amd64,linux/arm64,darwin/arm64,windows/arm,windows/arm64,linux/arm,darwin/amd64
     - name: Compress releases
       run: zip -r /home/runner/work/api-failover/binaries.zip /home/runner/work/api-failover/builds/*
-    - name: Delete old release
-      uses: Archaholic/action-delete-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
-      with:
-        tag_name: rolling
+    # - name: Delete old release
     - name: Update tag
       uses: EndBug/latest-tag@latest
       with:
@@ -55,7 +50,7 @@ jobs:
         files: |
           /home/runner/work/api-failover/binaries.zip 
           /home/runner/work/api-failover/builds/*
-    - name: Upload binaries
+    - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
         name: binaries
