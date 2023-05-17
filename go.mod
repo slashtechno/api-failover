@@ -7,7 +7,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.57.1
 	github.com/joho/godotenv v1.5.1
 	github.com/prometheus-community/pro-bing v0.1.0
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.1
 )
 
 require (
