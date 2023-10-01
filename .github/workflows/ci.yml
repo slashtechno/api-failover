@@ -24,7 +24,7 @@ jobs:
     #   with:
     #     go-version: 1.18
     - name: Cross compile
-      uses: crazy-max/ghaction-xgo@v2
+      uses: crazy-max/ghaction-xgo@v3
       with:
         xgo_version: latest
         go_version: 1.19
