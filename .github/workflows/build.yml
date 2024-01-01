@@ -26,7 +26,7 @@ jobs:
       - name: Build (Windows)
         if: matrix.os == 'windows-latest'
         run: 'go build -v -o api-failover_compiled_${{ matrix.os }}.exe'
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: binaries
           # path: 'api-failover_compiled_${{ matrix.os }}'
